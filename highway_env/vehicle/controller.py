@@ -99,9 +99,9 @@ class ControlledVehicle(Vehicle):
             target_lane_index = _from, _to, np.clip(_id - 1, 0, len(self.road.network.graph[_from][_to]) - 1)
             if self.road.network.get_lane(target_lane_index).is_reachable_from(self.position):
                 self.target_lane_index = target_lane_index
-
-        action = {"steering": self.steering_control(self.target_lane_index),
-                  "acceleration": self.speed_control(self.target_speed)}
+        if action is None or isinstance(action, str):
+            action = {"steering": self.steering_control(self.target_lane_index),
+                    "acceleration": self.speed_control(self.target_speed)}
         action['steering'] = np.clip(action['steering'], -self.MAX_STEERING_ANGLE, self.MAX_STEERING_ANGLE)
         super().act(action)
 
@@ -313,3 +313,16 @@ class MDPVehicle(ControlledVehicle):
                 if (t % int(trajectory_timestep / dt)) == 0:
                     states.append(copy.deepcopy(v))
         return states
+
+class ContinuousControlledVehicle(ControlledVehicle):
+
+    def __init__(self, road: Road, position: Vector, heading: float = 0, speed: float = 0, target_lane_index: LaneIndex = None, target_speed: float = None, route: Route = None):
+        super().__init__(road, position, heading, speed, target_lane_index, target_speed, route)
+    
+    def act(self, action: Union[dict, str] = None) -> None:
+        if action:
+            self.acceleration = action["acceleration"]
+        action = {"steering": self.steering_control(self.target_lane_index),
+                  "acceleration": self.acceleration}
+        super().act(action)
+
